@@ -7,6 +7,8 @@
 
 #define SYNC_TIMEOUT_MS 200
 
+#define BENCHMARK_MODE 1
+
 //#define DBG
 
 void readPort() ICACHE_RAM_ATTR;
