@@ -7,7 +7,7 @@
 
 #define SYNC_TIMEOUT_MS 200
 
-//#define DBG
+// #define DBG
 
 void readPort() ICACHE_RAM_ATTR;
 void writeSd() ICACHE_RAM_ATTR;
