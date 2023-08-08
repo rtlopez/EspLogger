@@ -10,6 +10,9 @@ The difference is that this firmware and hardware combination allows logging wit
 - [WeMos D1 mini](https://www.wemos.cc/product/d1-mini.html) board or even any ESP-12E
 - [WeMos SD card sield](https://www.wemos.cc/product/micro-sd-card-shield.html)
 
+## Wiring diagram
+![EspLogger Wemos D1 mini wiring diagram](https://github.com/AutoPlantBali/EspLogger/blob/master/docs/images/ESPLogger_wiring.png?raw=true)
+
 ## Configuration
 
 Put config.txt file in root directory of sd card. If not exists, it will be created with default configuration
