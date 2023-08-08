@@ -1,7 +1,24 @@
 #include <EEPROM.h>
-#include <SdFat.h>
-
+#include "SdFat.h"
 #include "config.h"
+
+#define LED_SD    4 //D2
+#define LED_PORT  5 //D1
+
+// WeMos D1 esp8266: pin 4 (D2) as the first schema or pin 15 (D8) as standard
+const uint8_t SD_CS_PIN = 15;
+
+// Try max SPI clock for an SD. Reduce SPI_CLOCK if errors occur.
+#define SPI_CLOCK SD_SCK_MHZ(50)
+
+// Try to select the best SD card configuration.
+#if HAS_SDIO_CLASS
+#define SD_CONFIG SdioConfig(FIFO_SDIO)
+#elif ENABLE_DEDICATED_SPI
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI, SPI_CLOCK)
+#else  // HAS_SDIO_CLASS
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SPI_CLOCK)
+#endif  // HAS_SDIO_CLASS
 
 ConfigData config;
 EepromData eeprom;
@@ -14,8 +31,8 @@ size_t idx = 0;
 
 void setup()
 {
-  pinMode(D1, OUTPUT); digitalWrite(D1, LOW);
-  pinMode(D2, OUTPUT); digitalWrite(D2, LOW);
+  pinMode(LED_PORT, OUTPUT); digitalWrite(LED_PORT, LOW);
+  pinMode(LED_SD, OUTPUT); digitalWrite(LED_SD, LOW);
   serial.begin(115200);
   serial.println();
 
@@ -46,21 +63,22 @@ void initPort()
   #endif
 }
 
-static SPISettings sd_speeds[] = { SPI_FULL_SPEED, SPI_HALF_SPEED, SPI_QUARTER_SPEED, SD_SCK_MHZ(8) };
-
 void initSd()
 {
-  for(size_t i = 0; i < 4; i++)
-  {
-    if(sd.begin(SS, sd_speeds[i]))
-    {
-      #ifdef DBG
-      serial.print("fi: "); serial.println(i);
-      #endif
-
-      return;
-    }
+  if (!ENABLE_DEDICATED_SPI) {
+    #ifdef DBG
+    serial.println("Set ENABLE_DEDICATED_SPI nonzero in SdFatConfig.h for best SPI performance");
+    #endif
   }
+  if(sd.begin(SD_CONFIG))
+  {
+    #ifdef DBG
+    serial.println("SD Begin");
+    #endif
+
+    return;
+  }
+  
   if(!sd.chdir())
   {
     serial.println("FileSystem error");
@@ -70,7 +88,7 @@ void initSd()
 
 void openFile()
 {
-  digitalWrite(D2, HIGH);
+  digitalWrite(LED_SD, HIGH);
   if(!file.open(config.fileName.c_str(), O_CREAT | O_WRITE | O_APPEND))
   {
     serial.println("Open error");
@@ -81,7 +99,7 @@ void openFile()
     file.rewind();
     file.sync();
   }
-  digitalWrite(D2, LOW);
+  digitalWrite(LED_SD, LOW);
 
   #ifdef DBG
   serial.print("fo: "); serial.println(!!file);
@@ -94,7 +112,7 @@ void readPort()
   if(idx < BUFFER_SIZE && serial.available())
   {
     size_t len = 0;
-    digitalWrite(D1, HIGH);
+    digitalWrite(LED_PORT, HIGH);
     while(idx < BUFFER_SIZE && serial.available())
     {
       buf[idx] = serial.read();
@@ -102,7 +120,7 @@ void readPort()
       len++;
     }
     lastReadTs = millis();
-    digitalWrite(D1, LOW);
+    digitalWrite(LED_PORT, LOW);
 
     #ifdef DBG
     serial.print("sr: "); serial.println(len);
@@ -120,7 +138,7 @@ void writeSd()
   // TODO: make sure that every write is aligned to 512 block size
   if(idx >= BUFFER_SIZE || (idx > 0 && (now - lastReadTs > SYNC_TIMEOUT_MS || (lastSyncTs > 0 && now - lastSyncTs > SYNC_TIMEOUT_MS))))
   {
-    digitalWrite(D2, HIGH);
+    digitalWrite(LED_SD, HIGH);
     
     file.write(buf, idx);
     file.sync();
@@ -134,7 +152,7 @@ void writeSd()
     #endif
     //serial.print(sent);
     
-    digitalWrite(D2, LOW);
+    digitalWrite(LED_SD, LOW);
   }
 }
 
